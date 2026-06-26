@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QX Memory — demo-webshop-automation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+  :root {
+    --bg:      #0d0d14;
+    --surface: rgba(255,255,255,0.05);
+    --border:  rgba(255,255,255,0.10);
+    --text:    rgba(230,230,245,0.90);
+    --muted:   rgba(180,180,210,0.45);
+    --purple:  #a78bfa;
+    --green:   #34d399;
+    --orange:  #fb923c;
+    --blue:    #60a5fa;
+    --pink:    #f472b6;
+    --red:     #f87171;
+    --radius:  10px;
+  }
+
+  body {
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  /* Subtle ambient gradient — just two soft blobs, no animation jitter */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 15% 30%, rgba(109,40,217,0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 45% at 85% 70%, rgba(14,165,233,0.09) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ── Shared surface style ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* ── Header ── */
+  #header {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px;
+    z-index: 20;
+    white-space: nowrap;
+  }
+  #header .repo { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 0.01em; }
+
+  .pill {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    padding: 3px 9px;
+    border-radius: 20px;
+    text-transform: uppercase;
+  }
+  .pill-ok  { background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.35); color: var(--green); }
+  .pill-gap { background: rgba(248,113,113,0.15); border: 1px solid rgba(248,113,113,0.35); color: var(--red); }
+
+  /* ── Legend ── */
+  #legend {
+    position: fixed;
+    top: 64px;
+    right: 16px;
+    padding: 14px 16px;
+    z-index: 20;
+    min-width: 170px;
+  }
+  #legend .label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+    font-size: 12px;
+    color: rgba(210,210,235,0.75);
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Stats bar ── */
+  #stats {
+    position: fixed;
+    bottom: 18px;
+    left: 18px;
+    display: flex;
+    z-index: 20;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .stat {
+    padding: 11px 18px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    transition: background 0.15s;
+    user-select: none;
+    position: relative;
+  }
+  .stat:last-child { border-right: none; }
+  .stat:hover    { background: rgba(255,255,255,0.09); }
+  .stat.active   { background: rgba(255,255,255,0.12); }
+  .stat.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+  }
+  .stat-val { font-size: 20px; font-weight: 700; line-height: 1; }
+  .stat-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.09em; margin-top: 3px; }
+
+  /* ── Hint ── */
+  #hint {
+    position: fixed;
+    bottom: 18px;
+    right: 16px;
+    padding: 7px 12px;
+    z-index: 20;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── Mindmap canvas ── */
+  #mm {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    display: block;
+  }
+
+  /*
+   * markmap injects its own <style> inside the SVG that sets node rect fill
+   * to white. These rules must live in the PAGE stylesheet (not patched via JS)
+   * so they win the cascade via specificity.
+   */
+  #mm .markmap-node > rect              { fill: transparent !important; }
+  #mm .markmap-node > rect:hover        { fill: rgba(255,255,255,0.06) !important; }
+  #mm .markmap-foreign                  { background: transparent !important; }
+  #mm .markmap-foreign > div            { background: transparent !important; color: rgba(225,225,245,0.90) !important; }
+  #mm foreignObject                     { overflow: visible; }
+  #mm foreignObject *                   { background: transparent !important; color: rgba(225,225,245,0.90) !important; }
+  /* markmap renders <text> nodes for some label types */
+  #mm text                              { fill: rgba(225,225,245,0.90) !important; }
+  /* connector lines */
+  #mm path.markmap-link                 { stroke: rgba(150,150,200,0.18) !important; stroke-width: 1.5px !important; }
+  /* collapse/expand circles */
+  #mm .markmap-node circle              { stroke-width: 1.5px !important; }
+
+  /* Off-screen stub so markmap autoloader fetches its deps */
+  #mm-stub { position: fixed; top: -9999px; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+</style>
+</head>
+<body>
+
+<div id="header" class="panel">
+  <span class="repo">QX Memory — demo-webshop-automation</span>
+  <span class="pill pill-gap">7 gaps</span>
+</div>
+
+<div id="legend" class="panel">
+  <div class="label">Node types</div>
+  <div class="legend-row"><div class="dot" style="background:var(--purple)"></div>Tests</div>
+  <div class="legend-row"><div class="dot" style="background:var(--green)"></div>Page objects</div>
+  <div class="legend-row"><div class="dot" style="background:var(--orange)"></div>Step definitions</div>
+  <div class="legend-row"><div class="dot" style="background:var(--blue)"></div>Symbols</div>
+  <div class="legend-row"><div class="dot" style="background:var(--pink)"></div>Flows &amp; APIs</div>
+  <div class="legend-row"><div class="dot" style="background:var(--red)"></div>Coverage gaps</div>
+</div>
+
+<div id="stats">
+  <div class="stat" style="color:var(--purple)"  onclick="focusCategory('tests', this)">
+    <div class="stat-val">20</div><div class="stat-lbl">Tests</div>
+  </div>
+  <div class="stat" style="color:var(--green)"   onclick="focusCategory('page objects', this)">
+    <div class="stat-val">10</div><div class="stat-lbl">Pages</div>
+  </div>
+  <div class="stat" style="color:var(--orange)"  onclick="focusCategory('step definitions', this)">
+    <div class="stat-val">23</div><div class="stat-lbl">Steps</div>
+  </div>
+  <div class="stat" style="color:var(--blue)"    onclick="focusCategory('symbols', this)">
+    <div class="stat-val">172</div><div class="stat-lbl">Symbols</div>
+  </div>
+  <div class="stat" style="color:#f87171"    onclick="focusCategory('coverage gaps', this)">
+    <div class="stat-val">7</div><div class="stat-lbl">Gaps</div>
+  </div>
+</div>
+
+<div id="hint" class="panel">scroll = zoom &nbsp;&nbsp; drag = pan &nbsp;&nbsp; click = expand/collapse</div>
+
+<svg id="mm"></svg>
+<div id="mm-stub" class="markmap"># x</div>
+
+<script>var MD = `# demo-webshop-automation
+
+## Tests (20)
+
+### gherkin  (5)
+
+#### Cart Functionality
+- Add a product to the cart
+- Verify cart contents
+- Remove a product from the cart
+
+#### Product Search
+- Search for a valid product
+- Search for an invalid product
+
+### playwright  (15)
+
+#### Add to Cart after Correct Login
+- should add product to cart via direct product page navigation
+- should add product to cart after searching for a product
+- should update cart count from 0 to 1 after adding a product when logged in
+- should add product to cart from category listing page when logged in
+- should persist added product in shopping cart after navigating to cart page
+- should increment cart count by 1 after adding a product when logged in
+
+#### Amazon AI Parent-Child Detection Demo
+- Scenario 1: Detect price of a specific product by name
+- Scenario 2: Detect price of the Nth product (INDEX-based)
+- Scenario 3: Find all phones under a price threshold (bulk extraction)
+- Scenario 4: Click a product link scoped by name (direct ParentChild)
+
+#### KAN-5: Login Server Error on Valid Credentials
+- should not receive 5xx server error response on valid login
+- should not land on an error page after valid login
+- should display authenticated state in header after valid login
+
+#### Login Tests
+- should successfully login with valid credentials
+- should fail login with invalid credentials
+
+## Page Objects (10)
+
+### AIClient
+- file: \`utils/ai-client.ts\`
+- locators: 1
+  - \`xpath=ancestor::*\\[contains(@class, \`  [css]
+
+### AccountPage
+- file: \`pages/account.page.ts\`
+- locators: 0
+
+### BasePage
+- file: \`pages/base.page.ts\`
+- locators: 0
+
+### CartPage
+- file: \`pages/cart.page.ts\`
+- locators: 0
+
+### HomePage
+- file: \`pages/home.page.ts\`
+- locators: 0
+
+### LocatorFinderTool
+- file: \`ai/core/tools/locator-finder.ts\`
+- locators: 8
+  - \`\\[data-testid=\`  [css]
+  - \`text=\${args.elementDescription}\`  [css]
+  - \`button\`  [role]
+  - \`\\[data-testid=\`  [css]
+  - \`text=\${args.elementDescription}\`  [css]
+  - \`button\`  [role]
+  - \`text=\${args.elementDescription}\`  [css]
+  - \`button\`  [role]
+
+### LoginPage
+- file: \`pages/login.page.ts\`
+- locators: 0
+
+### PageGeneratorTool
+- file: \`ai/core/tools/page-generator.ts\`
+- locators: 0
+
+### ParentChildUtils
+- file: \`utils/ai-client.ts\`
+- locators: 2
+  - \`xpath=ancestor::*\\[contains(@class, \`  [css]
+  - \`a.a-link-normal\`  [css]
+
+### ProductPage
+- file: \`pages/product.page.ts\`
+- locators: 0
+
+## Step Definitions (23)
+
+### Given  (3)
+- I am on the home page  \`steps/common.steps.ts:6\`
+- I am on the login page  \`steps/login.steps.ts:11\`
+- I have added a product to the cart  \`steps/cart.steps.ts:12\`
+
+### When  (13)
+- I add the product to the cart  \`steps/cart.steps.ts:29\`
+- I click on the login link  \`steps/login.steps.ts:17\`
+- I click the login button  \`steps/login.steps.ts:42\`
+- I click the search button  \`steps/product.steps.ts:12\`
+- I enter a valid email {string}  \`steps/login.steps.ts:26\`
+- I enter a valid password {string}  \`steps/login.steps.ts:30\`
+- I enter an invalid email {string}  \`steps/login.steps.ts:34\`
+- I enter an invalid password {string}  \`steps/login.steps.ts:38\`
+- I enter valid credentials  \`steps/login.steps.ts:21\`
+- I enter {string} in the search bar  \`steps/product.steps.ts:7\`
+- I open the shopping cart  \`steps/cart.steps.ts:37\`
+- I remove the product from the cart  \`steps/cart.steps.ts:43\`
+- I search for a product {string}  \`steps/cart.steps.ts:21\`
+
+### Then  (7)
+- I should be redirected to the homepage  \`steps/login.steps.ts:46\`
+- I should see a message indicating no products were found  \`steps/product.steps.ts:24\`
+- I should see an error message {string}  \`steps/login.steps.ts:54\`
+- I should see my account link  \`steps/login.steps.ts:50\`
+- I should see relevant products displayed  \`steps/product.steps.ts:18\`
+- I should see {string} in the cart items  \`steps/cart.steps.ts:55\`
+- the cart count should be updated to {int}  \`steps/cart.steps.ts:50\`
+
+## Symbols (172)
+
+### Classs  (35)
+- AIClient
+- AICucumberFormatter
+- AIFailureReporter
+- AIHealingUtils
+- AIInternalClient
+- AIService
+- AccountPage
+- AssertionGeneratorTool
+- AssertionUtils
+- BaseLLM
+- BasePage
+- BaseTool
+- Cart Functionality
+- CartPage
+- ElementUtils
+- ErrorAnalyzerTool
+- GroqLLM
+- HealingMemoryStore
+- HomePage
+- LLMFactory
+- *...and 15 more*
+
+### Interfaces  (13)
+- AIConfig
+- CustomFixtures
+- HealingMemory
+- HealingPlan
+- HealingRecord
+- LLMConfig
+- LLMMessage
+- LLMResponse
+- PageState
+- PrimitiveElement
+- PromptTemplate
+- Tool
+- ToolCall
+
+### Functions  (26)
+- Add a product to the cart
+- Remove a product from the cart
+- Search for a valid product
+- Search for an invalid product
+- Successful login with valid credentials
+- Unsuccessful login with invalid credentials
+- Verify cart contents
+- callAI
+- envBool
+- getCartCount
+- getEnv
+- getPageSnapshot
+- isAIEnabled
+- isFeatureEnabled
+- loadConfig
+- logAIConfig
+- loginUser
+- main
+- resolveApiKey
+- resolveBaseUrl
+- *...and 6 more*
+
+### Methods  (98)
+- acquireLock
+- addToCart
+- cleanCssSelector
+- cleanLocator
+- click
+- clickOrderHistory
+- clickPersonalDetails
+- clickSearchButton
+- constructor
+- create
+- execute
+- executeTool
+- fill
+- fillEmail
+- fillPassword
+- findTwoStepPairIndex
+- formatMessages
+- formatTools
+- generate
+- generateStream
+- *...and 78 more*
+
+## Flows (2)
+- add-to-cart.spec_tests  (2 steps)
+- features_tests  (7 steps)
+
+## Coverage Gaps  (7)
+
+### Pages Without Locators  (7)
+*Page objects that have no indexed locators — may be base classes or stubs*
+- CartPage  (pages/cart.page.ts)
+- AccountPage  (pages/account.page.ts)
+- ProductPage  (pages/product.page.ts)
+- LoginPage  (pages/login.page.ts)
+- HomePage  (pages/home.page.ts)
+- PageGeneratorTool  (ai/core/tools/page-generator.ts)
+- BasePage  (pages/base.page.ts)`;</script>
+<script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.16"></script>
+
+<script>
+// ── SVG style injection ───────────────────────────────────────────────────────
+// markmap appends its own <style> INSIDE the SVG after every render, which can
+// override page-level CSS. We counter by inserting our own <style> as the very
+// first child of the SVG — same specificity level, but earlier in source order
+// so !important on our page rules wins the tie.
+function injectSvgStyle(svg) {
+  var existing = svg.querySelector('style#qx-dark');
+  if (existing) return;
+  var s = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+  s.id = 'qx-dark';
+  s.textContent =
+    '.markmap-node > rect { fill: transparent !important; }' +
+    '.markmap-node > rect:hover { fill: rgba(255,255,255,0.07) !important; }' +
+    '.markmap-foreign { background: transparent !important; }' +
+    '.markmap-foreign > div { background: transparent !important; color: rgba(225,225,245,0.90) !important; }' +
+    'text { fill: rgba(225,225,245,0.90) !important; }' +
+    'path.markmap-link { stroke: rgba(150,150,200,0.18) !important; stroke-width: 1.5px !important; }';
+  svg.insertBefore(s, svg.firstChild);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function stripHtml(h) {
+  return (h || '').replace(/<[^>]*>/g, '');
+}
+
+function setFoldDeep(node, fold) {
+  if (!node.state) node.state = {};
+  node.state.fold = fold;
+  (node.children || []).forEach(function(c) { setFoldDeep(c, fold); });
+}
+
+// ── KPI click → focus that category ──────────────────────────────────────────
+// markmap's renderData() runs after setData() and resets state.fold for any
+// node at depth >= initialExpandLevel. Fixing this requires setOptions with
+// initialExpandLevel:-1 BEFORE setData so the internal reset is skipped.
+function focusCategory(keyword, statEl) {
+  var mm   = window._mm;
+  var root = window._root;
+  if (!mm || !root) return;
+
+  document.querySelectorAll('.stat.active').forEach(function(el) { el.classList.remove('active'); });
+  if (statEl) statEl.classList.add('active');
+
+  // Step 1: collapse everything
+  (root.children || []).forEach(function(child) { setFoldDeep(child, 1); });
+
+  // Step 2: find the matching section
+  var target = null;
+  (root.children || []).forEach(function(child) {
+    var text = stripHtml(child.content || '').toLowerCase();
+    if (text.indexOf(keyword.toLowerCase()) !== -1) target = child;
+  });
+
+  // Step 3: open section + direct children; keep grandchildren collapsed
+  if (target) {
+    if (!target.state) target.state = {};
+    target.state.fold = 0;
+    (target.children || []).forEach(function(c) {
+      if (!c.state) c.state = {};
+      c.state.fold = 0;
+      (c.children || []).forEach(function(gc) { setFoldDeep(gc, 1); });
+    });
+  }
+
+  // Step 4: render with level:-1 so our fold states are not overwritten
+  mm.setOptions({ initialExpandLevel: -1 });
+  mm.setData(root);
+  setTimeout(function() {
+    mm.fit();
+    injectSvgStyle(document.getElementById('mm'));
+  }, 280);
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+var _poll = setInterval(function() {
+  var wm = window.markmap;
+  if (!wm || !wm.Transformer || !wm.Markmap) return;
+  clearInterval(_poll);
+
+  try {
+    var t   = new wm.Transformer();
+    var res = t.transform(MD);
+    var svg = document.getElementById('mm');
+
+    var mm = wm.Markmap.create(svg, {
+      maxWidth:           320,
+      initialExpandLevel: 2,
+      colorFreezeLevel:   2,
+      duration:           250,
+    }, res.root);
+
+    window._mm   = mm;
+    window._root = res.root;
+
+    function patch() { injectSvgStyle(svg); }
+
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() { mm.fit(); patch(); });
+    });
+    setTimeout(function() { mm.fit(); patch(); }, 700);
+
+    // Re-patch whenever markmap mutates the SVG (node expand/collapse)
+    new MutationObserver(patch).observe(svg, { childList: true, subtree: true });
+
+  } catch(e) {
+    console.error('mindmap render failed:', e);
+  }
+}, 100);
+</script>
+</body>
+</html>
