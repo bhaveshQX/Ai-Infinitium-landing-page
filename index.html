@@ -40,45 +40,42 @@
   .icon-lg { width: 28px; height: 28px; stroke-width: 1.5; }
   .icon-xl { width: 36px; height: 36px; stroke-width: 1.4; }
 
-  /* ── WORDMARK
-       AI         ← line 1
-       Infinitium ← line 2
-       The I is accent-colored in both lines, visually bridging them.
-  ── */
+  /* ── WORDMARK  A[bigI]nfinitium — single line, I is tall and shared ── */
   .wordmark {
     display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     font-weight: 800;
     letter-spacing: -0.02em;
+    line-height: 1;
     gap: 0;
-    line-height: 1.15;
-  }
-  .wm-line1, .wm-line2 {
-    display: flex;
-    align-items: baseline;
-    gap: 0;
-  }
-  .wm-A, .wm-nfin {
-    color: var(--text);
-    font-weight: 800;
   }
   .wm-A {
+    font-size: 0.68em;
+    color: var(--muted);
+    font-weight: 800;
     letter-spacing: 0.04em;
-    margin-right: 1px;
-  }
-  .wm-nfin {
-    letter-spacing: -0.03em;
+    align-self: flex-end;
+    margin-bottom: 0.08em;
   }
   .wm-I {
+    font-size: 1em;
     color: var(--accent);
     font-weight: 900;
+    line-height: 1;
+  }
+  .wm-nfin {
+    font-size: 0.68em;
+    color: var(--text);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    align-self: flex-end;
+    margin-bottom: 0.08em;
   }
   /* size variants */
-  .wordmark-sm   { font-size: 13px; }
-  .wordmark-md   { font-size: 22px; }
-  .wordmark-lg   { font-size: 24px; }
-  .wordmark-hero { font-size: 40px; }
+  .wordmark-sm   { font-size: 20px; }
+  .wordmark-md   { font-size: 40px; }
+  .wordmark-lg   { font-size: 50px; }
+  .wordmark-hero { font-size: 70px; }
 
   /* ── NAV ── */
   .nav {
@@ -106,8 +103,9 @@
     color: #555;
   }
   /* nav text overrides for white background */
-  .nav .wm-A, .nav .wm-nfin { color: #2C3E6B; }
-  .nav .wm-I { color: #00A884; }
+  .nav .wm-A  { color: #2C3E6B; }
+  .nav .wm-I  { color: #009B7C; }
+  .nav .wm-nfin { color: #2C3E6B; }
   .nav-cta {
     font-family: var(--mono);
     font-size: 13px;
@@ -601,8 +599,7 @@
 <nav class="nav">
   <div class="nav-left">
     <div class="wordmark wordmark-md">
-      <div class="wm-line1"><span class="wm-A">A</span><span class="wm-I">I</span></div>
-      <div class="wm-line2"><span class="wm-I">I</span><span class="wm-nfin">nfinitium</span></div>
+      <span class="wm-A">A</span><span class="wm-I">I</span><span class="wm-nfin">nfinitium</span>
     </div>
     <div class="nav-divider"></div>
     <div class="nav-qualitrix">
@@ -618,8 +615,7 @@
   <div>
     <div class="hero-eyebrow">AI-powered test automation · Qualitrix</div>
     <div class="wordmark wordmark-hero hero-brand">
-      <div class="wm-line1"><span class="wm-A">A</span><span class="wm-I">I</span></div>
-      <div class="wm-line2"><span class="wm-I">I</span><span class="wm-nfin">nfinitium</span></div>
+      <span class="wm-A">A</span><span class="wm-I">I</span><span class="wm-nfin">nfinitium</span>
     </div>
     <p class="hero-sub-headline">
       From Jira ticket to <strong>passing tests</strong> — fully automated.
@@ -1010,7 +1006,6 @@
     <span class="footer-text">© 2026 Qualitrix · AI Infinitium</span>
   </div>
   <div class="wordmark wordmark-sm">
-      <div class="wm-line1"><span class="wm-A">A</span><span class="wm-I">I</span></div>
-      <div class="wm-line2"><span class="wm-I">I</span><span class="wm-nfin">nfinitium</span></div>
+      <span class="wm-A">A</span><span class="wm-I">I</span><span class="wm-nfin">nfinitium</span>
   </div>
 </footer>
